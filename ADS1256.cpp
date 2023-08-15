@@ -8,7 +8,7 @@
 #include "Arduino.h"
 #include "SPI.h"
 
-ADS1256::ADS1256(float clockspdMhz, float vref, bool useResetPin) {
+ADS1256::ADS1256(uint32_t spi_freq ,float vref, bool useResetPin) {
   // Set DRDY as input
   pinMode(pinDRDY, INPUT);      
   // Set CS as output
@@ -17,8 +17,12 @@ ADS1256::ADS1256(float clockspdMhz, float vref, bool useResetPin) {
   if (useResetPin) {
     // set RESETPIN as output
     pinMode(pinRST, OUTPUT );
+    // pull RESETPIN Low for 1ms
+    pinMode(pinRST, LOW);
+    delay(1);
     // pull RESETPIN high
     pinMode(pinRST, HIGH);
+    delay(1);
   }
 
   // Voltage Reference
@@ -27,10 +31,10 @@ ADS1256::ADS1256(float clockspdMhz, float vref, bool useResetPin) {
   // Default conversion factor
   _conversionFactor = 1.0;
 
-  // Start SPI on a quarter of ADC clock speed
-  SPI.begin();
-  SPI.beginTransaction(
-      SPISettings(clockspdMhz * 1000000 / 4, MSBFIRST, SPI_MODE1));
+  // store the spi_freq for transaction
+  _spi_setting._clock = spi_freq;
+  _spi_setting._bitOrder = MSBFIRST;
+  _spi_setting._dataMode = SPI_MODE1;
 }
 
 void ADS1256::writeRegister(unsigned char reg, unsigned char wdata) {
@@ -202,11 +206,10 @@ void ADS1256::setChannel(byte AIN_P, byte AIN_N) {
 
   MUX_CHANNEL = MUXP | MUXN;
 
-  CSON();
   writeRegister(ADS1256_RADD_MUX, MUX_CHANNEL);
   sendCommand(ADS1256_CMD_SYNC);
   sendCommand(ADS1256_CMD_WAKEUP);
-  CSOFF();
+
 }
 
 /*
@@ -249,17 +252,15 @@ uint8_t ADS1256::getStatus() {
   return readRegister(ADS1256_RADD_STATUS); 
 }
 
-
-
 void ADS1256::CSON() {
-  //PORT_CS &= ~(1 << PINDEX_CS);
+  SPI.beginTransaction(_spi_setting);
   digitalWrite(pinCS, LOW);
-}  // digitalWrite(_CS, LOW); }
+}
 
 void ADS1256::CSOFF() {
   digitalWrite(pinCS, HIGH);
-  //PORT_CS |= (1 << PINDEX_CS);
-}  // digitalWrite(_CS, HIGH); }
+  SPI.endTransaction();
+}
 
 void ADS1256::waitDRDY() {
   //while (PIN_DRDY & (1 << PINDEX_DRDY));

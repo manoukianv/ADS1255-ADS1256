@@ -29,9 +29,15 @@
 #elif   defined(ARDUINO_ARCH_ESP32)
 	// Contributions are welcome
     //https://circuits4you.com/wp-content/uploads/2018/12/ESP32-Pinout.jpg
-    #define pinDRDY 17
-    #define pinRST  16
-    #define pinCS   5 //  
+    #if !defined(pinDRDY)
+        #define pinDRDY 17
+    #endif
+    #if !defined(pinRST)
+        #define pinRST  16
+    #endif
+    #if !defined(pinCS)
+        #define pinCS   5
+    #endif
 #else 
 	// Contributions are welcome
 	#warning  "Oops! Pins for your board are not defined: pinDRDY, pinRST, pinCS"
@@ -125,7 +131,7 @@
 
 class ADS1256 {
  public:
-  ADS1256(float clockspdMhz, float vref, bool useresetpin);
+  ADS1256(uint32_t spi_freq = 1000000, float vref = 2.5, bool useresetpin = false);
   void writeRegister(unsigned char reg, unsigned char wdata);
   unsigned char readRegister(unsigned char reg);
   void sendCommand(unsigned char cmd);
@@ -143,14 +149,17 @@ class ADS1256 {
   void readTest();
 
  private:
+
+  byte _pga;
+  float _VREF;
+  float _conversionFactor;
+  SPISettings _spi_setting;
+
   void CSON();
   void CSOFF();
   unsigned long read_uint24();
   long read_int32();
   float read_float32();
-  byte _pga;
-  float _VREF;
-  float _conversionFactor;
 };
 
 #endif
